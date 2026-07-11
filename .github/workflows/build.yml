@@ -107,7 +107,7 @@ jobs:
       # build.bat defaults VCPKG_ROOT to C:\code\vcpkg; point it at the runner's
       # preinstalled vcpkg. RGBDS_DIR is set later once RGBDS is extracted.
       VCPKG_ROOT: C:\vcpkg
-      # TEMP (ci/win-nanovg): trip build.bat's GL-include diagnostic + early exit.
+      # TEMP (ci-win-nanovg): trip build.bat's :rpdiag probe (compile+preprocess).
       RP_DIAG: "1"
     steps:
       - uses: actions/checkout@v4
@@ -152,6 +152,25 @@ jobs:
         shell: pwsh
         run: |
           & "$env:VCPKG_ROOT\vcpkg.exe" install sdl2:x64-windows-static libffi:x64-windows-static
+
+      - name: Pre-fetch Khronos GL headers (khronos.org errors for CI runner IPs)
+        shell: pwsh
+        run: |
+          # DPF's DGL downloads GL/glext.h from www.khronos.org at configure time,
+          # but that host returns an error/redirect to GitHub Actions runner IPs.
+          # CMake's file(DOWNLOAD) has no status check, so it writes that garbage as
+          # glext.h — the file exists (no C1083) but has no PFNGL* typedefs, and
+          # NanoVG.cpp fails with a wall of C4430/C2065. Seed the real headers from
+          # GitHub raw (reachable from runners) so DPF's `if(NOT EXISTS)` skips its
+          # broken download. Fail loudly if the fetch is bad.
+          $k = "deps/dpf.js/deps/dpf/khronos"
+          New-Item -ItemType Directory -Force "$k/GL","$k/KHR" | Out-Null
+          Invoke-WebRequest -UseBasicParsing "https://raw.githubusercontent.com/KhronosGroup/OpenGL-Registry/main/api/GL/glext.h" -OutFile "$k/GL/glext.h"
+          Invoke-WebRequest -UseBasicParsing "https://raw.githubusercontent.com/KhronosGroup/EGL-Registry/main/api/KHR/khrplatform.h" -OutFile "$k/KHR/khrplatform.h"
+          $len = (Get-Item "$k/GL/glext.h").Length
+          if ($len -lt 100000) { throw "glext.h too small ($len bytes) — bad download" }
+          if (-not (Select-String -Path "$k/GL/glext.h" -Pattern "PFNGLACTIVETEXTUREPROC" -Quiet)) { throw "glext.h missing PFNGL typedefs" }
+          Write-Host "seeded glext.h ($len bytes) + khrplatform.h"
 
       - name: Build
         shell: cmd

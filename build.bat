@@ -82,6 +82,9 @@ set "VCPKG_ROOT=%RP_VCPKG%"
 rem RGBDS, Node, and the VS-bundled CMake + Ninja must be resolvable.
 set "PATH=%RGBDS_DIR%;%NODE_DIR%;%APPDATA%\npm;%VSINSTALL%\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin;%VSINSTALL%\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja;%PATH%"
 
+rem ---- TEMP CI diagnostic (throwaway ci-win-nanovg) ------------------------
+if defined RP_DIAG goto rpdiag
+
 rem ---- clean ---------------------------------------------------------------
 if "%CLEAN%"=="1" (
     echo ==^> Cleaning build\
@@ -136,4 +139,17 @@ echo   build.bat --tests      # (re)configure with BUILD_TESTING=ON so the
 echo                          # Catch2 unit tests build too (off by default)
 echo.
 echo Flags combine, e.g. build.bat --clean --tests
+exit /b 0
+
+:rpdiag
+set "K=%~dp0deps\dpf.js\deps\dpf\khronos"
+echo ==RPDIAG== seeded khronos: %K%
+for %%F in ("%K%\GL\glext.h") do echo ==RPDIAG== glext bytes=%%~zF
+echo ==RPDIAG== COMPILE probe (exact dgl-opengl flags):
+cl /nologo /TP -DDGL_OPENGL -DNOMINMAX -D_CRT_SECURE_NO_WARNINGS /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++20 -MT /Zc:__cplusplus /UTF-8 -I"%K%" /c "%~dp0tools\ci-glprobe.cpp" /Fo"%TEMP%\p.obj" 2>&1 | findstr /i "error C1083 C4430 C2065 C2146 rp_probe"
+echo ==RPDIAG== compile exit=%errorlevel%
+echo ==RPDIAG== PREPROCESS probe (does glext's PFNGL typedef survive?):
+cl /nologo /TP -DDGL_OPENGL -DNOMINMAX -D_CRT_SECURE_NO_WARNINGS /DWIN32 /D_WINDOWS -std:c++20 /Zc:__cplusplus -I"%K%" /P /Fi"%TEMP%\p.i" "%~dp0tools\ci-glprobe.cpp" >nul 2>&1
+findstr /c:"PFNGLACTIVETEXTUREPROC" "%TEMP%\p.i" >nul && echo ==RPDIAG== preprocessed HAS PFNGLACTIVETEXTUREPROC || echo ==RPDIAG== preprocessed MISSING PFNGLACTIVETEXTUREPROC
+echo ==RPDIAG== done
 exit /b 0
