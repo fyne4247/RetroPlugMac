@@ -145,19 +145,18 @@ echo Flags combine, e.g. build.bat --clean --tests
 exit /b 0
 
 :rpdiag
-rem Reproduce the NanoVG GL-include failure in isolation with /showIncludes so we
-rem see the exact resolved gl.h + glext.h paths (mirrors DPF's OpenGL-include.hpp
-rem order). cl is already on PATH (vcvars ran above).
-(
-    echo #include ^<windows.h^>
-    echo #include ^<GL/gl.h^>
-    echo #include ^<GL/glext.h^>
-    echo PFNGLACTIVETEXTUREPROC rp_probe = 0;
-) > "%TEMP%\rpglprobe.cpp"
+rem Reproduce the NanoVG GL-include failure in isolation. Absolute khronos -I
+rem (mirrors the real dgl-opengl compile). cl is on PATH (vcvars ran above).
+set "KHRONOS=%~dp0deps\dpf.js\deps\dpf\khronos"
+echo ==RPDIAG== KHRONOS=%KHRONOS%
+if exist "%KHRONOS%\GL\glext.h" (echo ==RPDIAG== glext.h EXISTS) else (echo ==RPDIAG== glext.h MISSING)
+> "%TEMP%\rpglprobe.cpp" echo #include ^<windows.h^>
+>> "%TEMP%\rpglprobe.cpp" echo #include ^<GL/gl.h^>
+>> "%TEMP%\rpglprobe.cpp" echo #include ^<GL/glext.h^>
+>> "%TEMP%\rpglprobe.cpp" echo PFNGLACTIVETEXTUREPROC rp_probe = 0;
 echo ==RPDIAG== probe source:
 type "%TEMP%\rpglprobe.cpp"
-echo ==RPDIAG== compiling probe (khronos on -I, mirrors dgl-opengl):
-cl /nologo /c /showIncludes -Ideps\dpf.js\deps\dpf\khronos "%TEMP%\rpglprobe.cpp" /Fo"%TEMP%\rpglprobe.obj" 2>&1 | findstr /i "gl.h glext.h error rp_probe"
-echo ==RPDIAG== probe exit=%errorlevel%
-echo ==RPDIAG== done
+echo ==RPDIAG== compiling probe:
+cl /nologo /c -I"%KHRONOS%" "%TEMP%\rpglprobe.cpp" /Fo"%TEMP%\rpglprobe.obj" 2>&1 | findstr /i "glext error rp_probe C1083 C4430"
+echo ==RPDIAG== probe done
 exit /b 0
