@@ -148,5 +148,10 @@ exit /b 0
 echo ==RPDIAG== INCLUDE=%INCLUDE%
 for %%D in ("%INCLUDE:;=" "%") do if exist "%%~D\GL\gl.h" echo ==RPDIAG== HAS_GLGL %%~D
 for %%D in ("%INCLUDE:;=" "%") do if exist "%%~D\GL\glext.h" echo ==RPDIAG== HAS_GLEXT %%~D
+rem Dump what the SDK gl.h defines re: GL versions / glext gating (the suspected cause).
+for %%D in ("%INCLUDE:;=" "%") do if exist "%%~D\GL\gl.h" (
+    echo ==RPDIAG== --- %%~D\GL\gl.h : version/glext lines ---
+    findstr /n /c:"define GL_VERSION_1_" /c:"define GL_VERSION_2" /c:"define GL_VERSION_3" /c:"define GL_VERSION_4" /c:"GL_GLEXT_LEGACY" /c:"glext.h" /c:"PFNGLACTIVETEXTURE" /c:"GL_TEXTURE0" /c:"typedef char GLchar" "%%~D\GL\gl.h"
+)
 echo ==RPDIAG== done
 exit /b 0
