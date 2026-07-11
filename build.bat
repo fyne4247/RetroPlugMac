@@ -82,12 +82,6 @@ set "VCPKG_ROOT=%RP_VCPKG%"
 rem RGBDS, Node, and the VS-bundled CMake + Ninja must be resolvable.
 set "PATH=%RGBDS_DIR%;%NODE_DIR%;%APPDATA%\npm;%VSINSTALL%\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin;%VSINSTALL%\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja;%PATH%"
 
-rem ---- CI diagnostic (throwaway ci/win-nanovg branch only) -----------------
-rem With RP_DIAG set, dump the effective %INCLUDE% and every entry that provides
-rem GL\gl.h or GL\glext.h, then exit — to find which rogue header shadows the
-rem Windows-SDK GL 1.1 header and breaks DPF NanoVG under MSVC. Remove before merge.
-if defined RP_DIAG goto rpdiag
-
 rem ---- clean ---------------------------------------------------------------
 if "%CLEAN%"=="1" (
     echo ==^> Cleaning build\
@@ -142,22 +136,4 @@ echo   build.bat --tests      # (re)configure with BUILD_TESTING=ON so the
 echo                          # Catch2 unit tests build too (off by default)
 echo.
 echo Flags combine, e.g. build.bat --clean --tests
-exit /b 0
-
-:rpdiag
-rem Reproduce the NanoVG GL-include failure in isolation. Download glext.h the
-rem same way DPF does (khronos/ is gitignored + configure-downloaded), then
-rem compile the committed probe with the EXACT dgl-opengl flags. cl + curl are
-rem available (vcvars ran; curl ships on windows runners).
-set "K=%TEMP%\rpk"
-mkdir "%K%\GL" 2>nul
-mkdir "%K%\KHR" 2>nul
-curl -fsSL "https://www.khronos.org/registry/OpenGL/api/GL/glext.h" -o "%K%\GL\glext.h"
-curl -fsSL "https://registry.khronos.org/EGL/api/KHR/khrplatform.h" -o "%K%\KHR\khrplatform.h"
-for %%F in ("%K%\GL\glext.h") do echo ==RPDIAG== glext.h bytes=%%~zF
-findstr /c:"PFNGLACTIVETEXTUREPROC" "%K%\GL\glext.h" >nul && echo ==RPDIAG== glext HAS PFNGLACTIVETEXTUREPROC || echo ==RPDIAG== glext MISSING PFNGLACTIVETEXTUREPROC
-echo ==RPDIAG== compiling probe (exact dgl-opengl flags):
-cl /nologo /TP -DDGL_OPENGL -DNOMINMAX -D_CRT_SECURE_NO_WARNINGS /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++20 -MT /Zc:__cplusplus /UTF-8 -I"%K%" /c "%~dp0tools\ci-glprobe.cpp" /Fo"%K%\probe.obj" 2>&1 | findstr /i "error C1083 C4430 C2065 C2146 rp_probe glext"
-echo ==RPDIAG== probe exit=%errorlevel%
-echo ==RPDIAG== done
 exit /b 0
