@@ -82,6 +82,12 @@ set "VCPKG_ROOT=%RP_VCPKG%"
 rem RGBDS, Node, and the VS-bundled CMake + Ninja must be resolvable.
 set "PATH=%RGBDS_DIR%;%NODE_DIR%;%APPDATA%\npm;%VSINSTALL%\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin;%VSINSTALL%\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja;%PATH%"
 
+rem ---- CI diagnostic (throwaway ci/win-nanovg branch only) -----------------
+rem With RP_DIAG set, dump the effective %INCLUDE% and every entry that provides
+rem GL\gl.h or GL\glext.h, then exit — to find which rogue header shadows the
+rem Windows-SDK GL 1.1 header and breaks DPF NanoVG under MSVC. Remove before merge.
+if defined RP_DIAG goto rpdiag
+
 rem ---- clean ---------------------------------------------------------------
 if "%CLEAN%"=="1" (
     echo ==^> Cleaning build\
@@ -136,4 +142,11 @@ echo   build.bat --tests      # (re)configure with BUILD_TESTING=ON so the
 echo                          # Catch2 unit tests build too (off by default)
 echo.
 echo Flags combine, e.g. build.bat --clean --tests
+exit /b 0
+
+:rpdiag
+echo ==RPDIAG== INCLUDE=%INCLUDE%
+for %%D in ("%INCLUDE:;=" "%") do if exist "%%~D\GL\gl.h" echo ==RPDIAG== HAS_GLGL %%~D
+for %%D in ("%INCLUDE:;=" "%") do if exist "%%~D\GL\glext.h" echo ==RPDIAG== HAS_GLEXT %%~D
+echo ==RPDIAG== done
 exit /b 0

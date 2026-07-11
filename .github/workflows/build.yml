@@ -107,6 +107,8 @@ jobs:
       # build.bat defaults VCPKG_ROOT to C:\code\vcpkg; point it at the runner's
       # preinstalled vcpkg. RGBDS_DIR is set later once RGBDS is extracted.
       VCPKG_ROOT: C:\vcpkg
+      # TEMP (ci/win-nanovg): trip build.bat's GL-include diagnostic + early exit.
+      RP_DIAG: "1"
     steps:
       - uses: actions/checkout@v4
         with:
