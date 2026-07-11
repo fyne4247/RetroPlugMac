@@ -145,18 +145,19 @@ echo Flags combine, e.g. build.bat --clean --tests
 exit /b 0
 
 :rpdiag
-rem Reproduce the NanoVG GL-include failure in isolation. Absolute khronos -I
-rem (mirrors the real dgl-opengl compile). cl is on PATH (vcvars ran above).
-set "KHRONOS=%~dp0deps\dpf.js\deps\dpf\khronos"
-echo ==RPDIAG== KHRONOS=%KHRONOS%
-if exist "%KHRONOS%\GL\glext.h" (echo ==RPDIAG== glext.h EXISTS) else (echo ==RPDIAG== glext.h MISSING)
-> "%TEMP%\rpglprobe.cpp" echo #include ^<windows.h^>
->> "%TEMP%\rpglprobe.cpp" echo #include ^<GL/gl.h^>
->> "%TEMP%\rpglprobe.cpp" echo #include ^<GL/glext.h^>
->> "%TEMP%\rpglprobe.cpp" echo PFNGLACTIVETEXTUREPROC rp_probe = 0;
-echo ==RPDIAG== probe source:
-type "%TEMP%\rpglprobe.cpp"
-echo ==RPDIAG== compiling probe:
-cl /nologo /c -I"%KHRONOS%" "%TEMP%\rpglprobe.cpp" /Fo"%TEMP%\rpglprobe.obj" 2>&1 | findstr /i "glext error rp_probe C1083 C4430"
-echo ==RPDIAG== probe done
+rem Reproduce the NanoVG GL-include failure in isolation. Download glext.h the
+rem same way DPF does (khronos/ is gitignored + configure-downloaded), then
+rem compile the committed probe with the EXACT dgl-opengl flags. cl + curl are
+rem available (vcvars ran; curl ships on windows runners).
+set "K=%TEMP%\rpk"
+mkdir "%K%\GL" 2>nul
+mkdir "%K%\KHR" 2>nul
+curl -fsSL "https://www.khronos.org/registry/OpenGL/api/GL/glext.h" -o "%K%\GL\glext.h"
+curl -fsSL "https://registry.khronos.org/EGL/api/KHR/khrplatform.h" -o "%K%\KHR\khrplatform.h"
+for %%F in ("%K%\GL\glext.h") do echo ==RPDIAG== glext.h bytes=%%~zF
+findstr /c:"PFNGLACTIVETEXTUREPROC" "%K%\GL\glext.h" >nul && echo ==RPDIAG== glext HAS PFNGLACTIVETEXTUREPROC || echo ==RPDIAG== glext MISSING PFNGLACTIVETEXTUREPROC
+echo ==RPDIAG== compiling probe (exact dgl-opengl flags):
+cl /nologo /TP -DDGL_OPENGL -DNOMINMAX -D_CRT_SECURE_NO_WARNINGS /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++20 -MT /Zc:__cplusplus /UTF-8 -I"%K%" /c "%~dp0tools\ci-glprobe.cpp" /Fo"%K%\probe.obj" 2>&1 | findstr /i "error C1083 C4430 C2065 C2146 rp_probe glext"
+echo ==RPDIAG== probe exit=%errorlevel%
+echo ==RPDIAG== done
 exit /b 0
