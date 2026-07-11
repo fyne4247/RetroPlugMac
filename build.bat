@@ -142,14 +142,12 @@ echo Flags combine, e.g. build.bat --clean --tests
 exit /b 0
 
 :rpdiag
-set "K=%~dp0deps\dpf.js\deps\dpf\khronos"
-echo ==RPDIAG== seeded khronos: %K%
-for %%F in ("%K%\GL\glext.h") do echo ==RPDIAG== glext bytes=%%~zF
-echo ==RPDIAG== COMPILE probe (exact dgl-opengl flags):
-cl /nologo /TP -DDGL_OPENGL -DNOMINMAX -D_CRT_SECURE_NO_WARNINGS /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++20 -MT /Zc:__cplusplus /UTF-8 -I"%K%" /c "%~dp0tools\ci-glprobe.cpp" /Fo"%TEMP%\p.obj" 2>&1 | findstr /i "error C1083 C4430 C2065 C2146 rp_probe"
-echo ==RPDIAG== compile exit=%errorlevel%
-echo ==RPDIAG== PREPROCESS probe (does glext's PFNGL typedef survive?):
-cl /nologo /TP -DDGL_OPENGL -DNOMINMAX -D_CRT_SECURE_NO_WARNINGS /DWIN32 /D_WINDOWS -std:c++20 /Zc:__cplusplus -I"%K%" /P /Fi"%TEMP%\p.i" "%~dp0tools\ci-glprobe.cpp" >nul 2>&1
-findstr /c:"PFNGLACTIVETEXTUREPROC" "%TEMP%\p.i" >nul && echo ==RPDIAG== preprocessed HAS PFNGLACTIVETEXTUREPROC || echo ==RPDIAG== preprocessed MISSING PFNGLACTIVETEXTUREPROC
+set "DPF=%~dp0deps\dpf.js\deps\dpf"
+echo ==RPDIAG== preprocess REAL NanoVG.cpp with exact dgl-opengl flags/includes:
+cl /nologo /TP -DDGL_OPENGL -DDGL_USE_FILE_BROWSER -DDGL_USE_WEB_VIEW -DHAVE_DGL -DHAVE_OPENGL -DNOMINMAX -D_CRT_SECURE_NO_WARNINGS /DWIN32 /D_WINDOWS /EHsc -std:c++20 /Zc:__cplusplus /UTF-8 -I"%DPF%\dgl" -I"%DPF%\dgl\src\pugl-upstream\include" -I"%~dp0packages\native" -I"%DPF%\khronos" /showIncludes /P /Fi"%TEMP%\n.i" "%DPF%\dgl\src\NanoVG.cpp" 2>"%TEMP%\inc.txt"
+echo ==RPDIAG== every gl.h / glext.h the compile included (order matters):
+findstr /i /c:"gl.h" /c:"glext" "%TEMP%\inc.txt"
+echo ==RPDIAG== did glext's PFNGL typedef survive into the preprocessed output?
+findstr /c:"PFNGLACTIVETEXTUREPROC) (GLenum" "%TEMP%\n.i" >nul && echo ==RPDIAG== .i HAS PFNGL typedef DEFN || echo ==RPDIAG== .i MISSING PFNGL typedef DEFN
 echo ==RPDIAG== done
 exit /b 0
