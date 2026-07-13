@@ -41,6 +41,10 @@
 	<string>BNDL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>0.3.4</string>
+	<key>CFBundleSupportedPlatforms</key>
+	<array>
+		<string>MacOSX</string>
+	</array>
 	<key>CFBundleSignature</key>
 	<string>2wvF</string>
 	<key>CFBundleVersion</key>

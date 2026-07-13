@@ -27,6 +27,12 @@ cp "$ROOT/resources/RetroPlug-AU-Info.plist" "$DEST/Contents/Info.plist"
 cp "$ROOT/resources/fonts/"* "$DEST/Contents/Resources/" 2>/dev/null || true
 printf 'BNDL????' > "$DEST/Contents/PkgInfo"
 
+# The premake output is only a linker-signed Mach-O. Once it is wrapped with
+# an Info.plist and resources, sign the completed bundle so Audio Component
+# Registrar accepts the package. An ad-hoc signature is sufficient for local
+# use and does not require an Apple Developer account.
+codesign --force --deep --sign - "$DEST"
+
 INSTALL_DIR="$HOME/Library/Audio/Plug-Ins/Components"
 mkdir -p "$INSTALL_DIR"
 rm -rf "$INSTALL_DIR/RetroPlug.component"
