@@ -116,8 +116,8 @@ SameBoyPlugPtr ProcessingContext::removeSystem(SystemIndex idx) {
 			_audioBuffers[i].frameCount = 0;
 		} else {
 			if (_audioSettings.frameCount > 0) {
-				_audioBuffers[idx].data = std::make_shared<DataBuffer<float>>(_audioSettings.frameCount * 2);
-				_audioBuffers[idx].frameCount = _audioSettings.frameCount;
+				_audioBuffers[i].data = std::make_shared<DataBuffer<float>>(_audioSettings.frameCount * 2);
+				_audioBuffers[i].frameCount = _audioSettings.frameCount;
 			}
 		}
 	}

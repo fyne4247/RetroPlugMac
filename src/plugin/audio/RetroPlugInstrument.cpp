@@ -93,14 +93,16 @@ bool RetroPlugInstrument::SerializeState(IByteChunk& chunk) {
 }
 
 int RetroPlugInstrument::UnserializeState(const IByteChunk& chunk, int pos) {
-	int size;
+	int size = 0;
 	pos = chunk.Get(&size, pos);
 
-	if (size > 0 && size < 10 * 1024 * 1024) {
+	if (pos >= 0 && size > 0 && size < 10 * 1024 * 1024 && size <= chunk.Size() - pos) {
 		DataBufferPtr buffer = std::make_shared<DataBuffer<char>>(size);
-		chunk.GetBytes(buffer->data(), size, pos);
-		_controller.loadState(buffer);
-		return pos + size;
+		const int endPos = chunk.GetBytes(buffer->data(), size, pos);
+		if (endPos >= 0) {
+			_controller.loadState(buffer);
+			return endPos;
+		}
 	}
 
 	return pos;
@@ -109,12 +111,10 @@ int RetroPlugInstrument::UnserializeState(const IByteChunk& chunk, int pos) {
 void RetroPlugInstrument::ProcessMidiMsg(const IMidiMsg& msg) {
 	TRACE;
 
-	_controller.getMenuLock()->lock(); // Temporary
+	std::scoped_lock lock(*_controller.getMenuLock()); // Temporary
 	if (_controller.audioLua()) {
 		_controller.audioLua()->onMidi(msg.mOffset, msg.mStatus, msg.mData1, msg.mData2);
 	}
-	
-	_controller.getMenuLock()->unlock();
 }
 
 void RetroPlugInstrument::OnReset() {

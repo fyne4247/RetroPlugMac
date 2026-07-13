@@ -12,7 +12,7 @@ const size_t PIXEL_WIDTH = 160;
 const size_t PIXEL_HEIGHT = 144;
 const size_t PIXEL_COUNT = (PIXEL_WIDTH * PIXEL_HEIGHT);
 const size_t FRAME_BUFFER_SIZE = (PIXEL_COUNT * 4);
-const size_t AUDIO_SCRATCH_SIZE = 1024 * 8;
+const size_t AUDIO_CALLBACK_HEADROOM = 16;
 
 class SameBoyPlug;
 using SameBoyPlugPtr = std::shared_ptr<SameBoyPlug>;
@@ -58,7 +58,7 @@ struct DirectAccessType {
 struct SameBoyPlugState {
 	GB_gameboy_t* gb = nullptr;
 	char frameBuffer[FRAME_BUFFER_SIZE];
-	GameboySample audioBuffer[AUDIO_SCRATCH_SIZE];
+	std::vector<GameboySample> audioBuffer;
 	size_t currentAudioFrames = 0;
 	std::queue<OffsetButton> buttonQueue;
 	std::queue<OffsetByte> serialQueue;
@@ -156,7 +156,7 @@ public:
 
 	size_t saveState(char* target, size_t size);
 
-	void loadState(const char* source, size_t size);
+	bool loadState(const char* source, size_t size);
 
 	void setSetting(const std::string& name, int value);
 

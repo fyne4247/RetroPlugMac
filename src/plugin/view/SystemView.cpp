@@ -45,15 +45,16 @@ void SystemView::DeleteFrame() {
 void SystemView::WriteFrame(const VideoBuffer& buffer) {
 	const char* frameData = buffer.data.get();
 	if (frameData) {
-		if (buffer.data.count() > _frameBufferSize) {
+		const size_t frameSize = buffer.data.count();
+		_dimensions = buffer.dimensions;
+
+		if (frameSize != _frameBufferSize) {
 			if (_frameBuffer) {
 				delete[] _frameBuffer;
 			}
 
-			_dimensions = buffer.dimensions;
-
-			_frameBufferSize = buffer.data.count();
-			_frameBuffer = new char[_frameBufferSize];
+			_frameBufferSize = frameSize;
+			_frameBuffer = _frameBufferSize > 0 ? new char[_frameBufferSize] : nullptr;
 
 			if (_imageId != -1) {
 				NVGcontext* ctx = (NVGcontext*)_graphics->GetDrawContext();
@@ -62,8 +63,10 @@ void SystemView::WriteFrame(const VideoBuffer& buffer) {
 			}
 		}
 
-		memcpy(_frameBuffer, frameData, _frameBufferSize);
-		_frameDirty = true;
+		if (_frameBufferSize > 0) {
+			memcpy(_frameBuffer, frameData, _frameBufferSize);
+			_frameDirty = true;
+		}
 	}
 }
 

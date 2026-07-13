@@ -90,8 +90,10 @@ static void vblankHandler(GB_gameboy_t* gb, GB_vblank_type_t type) {
 
 static void audioHandler(GB_gameboy_t* gb, GB_sample_t* sample) {
 	SameBoyPlugState* s = (SameBoyPlugState*)GB_get_user_data(gb);
-	s->audioBuffer[s->currentAudioFrames].left = sample->left;
-	s->audioBuffer[s->currentAudioFrames].right = sample->right;
+	if (s->currentAudioFrames < s->audioBuffer.size()) {
+		s->audioBuffer[s->currentAudioFrames].left = sample->left;
+		s->audioBuffer[s->currentAudioFrames].right = sample->right;
+	}
 	s->currentAudioFrames++;
 }
 
@@ -237,9 +239,12 @@ size_t SameBoyPlug::saveState(char* target, size_t size) {
 	return 0;
 }
 
-void SameBoyPlug::loadState(const char* source, size_t size) {
-	assert(GB_get_save_state_size(_state.gb) == size);
-	GB_load_state_from_buffer(_state.gb, (const uint8_t*)source, size);
+bool SameBoyPlug::loadState(const char* source, size_t size) {
+	if (!_state.gb || !source || GB_get_save_state_size(_state.gb) != size) {
+		return false;
+	}
+
+	return GB_load_state_from_buffer(_state.gb, (const uint8_t*)source, size) == 0;
 }
 
 void SameBoyPlug::setSetting(const std::string& name, int value) {
@@ -269,6 +274,7 @@ void SameBoyPlug::sendSerialByte(int offset, int byte) {
 // This is called from the audio thread
 void SameBoyPlug::update(size_t audioFrames) {
 	_state.vblankOccurred = false;
+	_state.audioBuffer.resize(audioFrames + AUDIO_CALLBACK_HEADROOM);
 
 	int delta = 0;
 	while (_state.currentAudioFrames < audioFrames) {
@@ -326,6 +332,7 @@ void SameBoyPlug::updateMultiple(SameBoyPlug** plugs, size_t plugCount, size_t a
 	for (size_t i = 0; i < plugCount; i++) {
 		st[i] = plugs[i]->getState();
 		st[i]->vblankOccurred = false;
+		st[i]->audioBuffer.resize(audioFrames + AUDIO_CALLBACK_HEADROOM);
 	}
 
 	size_t complete = 0;
@@ -376,7 +383,7 @@ void SameBoyPlug::setRomData(DataBuffer<char>* data) {
 	uint16_t bank;
 	void* rom = GB_get_direct_access(_state.gb, GB_DIRECT_ACCESS_ROM, &size, &bank);
 
-	if (size <= data->size()) {
+	if (data && data->size() <= size) {
 		memcpy(rom, data->data(), data->size());
 	}
 }
@@ -403,18 +410,21 @@ void SameBoyPlug::updateAV(int audioFrames) {
 		_audioScratchSize = sampleCount;
 	}*/
 
-	if (sampleCount <= AUDIO_SCRATCH_SIZE) {
+	if (_state.currentAudioFrames >= (size_t)audioFrames && _audioBuffer && _audioBuffer->data) {
 		if (_resetSamples <= 0) {
-			SampleConverter::s16_to_f32(_audioBuffer->data->data(), (int16_t*)_state.audioBuffer, sampleCount);
+			SampleConverter::s16_to_f32(_audioBuffer->data->data(), (int16_t*)_state.audioBuffer.data(), sampleCount);
 		} else {
 			_audioBuffer->data->clear();
 			_resetSamples -= audioFrames;
 		}
 
-		_state.currentAudioFrames = 0;
 	} else {
-		_audioBuffer->data->clear();
+		if (_audioBuffer && _audioBuffer->data) {
+			_audioBuffer->data->clear();
+		}
 	}
+
+	_state.currentAudioFrames = 0;
 
 	if (_videoBuffer->data.get()) {
 		if (_state.vblankOccurred) {

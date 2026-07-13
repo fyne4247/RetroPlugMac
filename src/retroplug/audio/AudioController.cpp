@@ -145,9 +145,8 @@ void AudioController::onMenu(SystemIndex idx, std::vector<Menu*>& menus) {
 	if (ctx) {
 		// TODO: This mutex is temporary until I find a good way of sending context menus
 		// across threads!
-		_lock.lock();
+		std::scoped_lock lock(_lock);
 		ctx->onMenu(idx, menus);
-		_lock.unlock();
 	}
 }
 
@@ -155,7 +154,7 @@ void AudioController::process(float** outputs, size_t frameCount) {
 	auto ctx = _lua;
 	// TODO: This mutex is temporary until I find a good way of sending context menus
 	// across threads!
-	_lock.lock();
+	std::scoped_lock lock(_lock);
 	if (ctx && ctx->isValid()) {
 		ctx->update(frameCount);
 	}
@@ -180,5 +179,4 @@ void AudioController::process(float** outputs, size_t frameCount) {
 		}
 	}*/
 
-	_lock.unlock();
 }

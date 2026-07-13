@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <memory>
+#include <stdexcept>
 #include <string_view>
 
 #include <xxhash.h>
@@ -19,24 +20,27 @@ public:
 	DataBuffer(const DataBuffer& other) { *this = other; }
 	DataBuffer(DataBuffer&& other) { *this = std::move(other); }
 	DataBuffer(size_t size) { resize(size); }
-	DataBuffer(T* data, size_t size, bool ownsData = false) : _dataPtr(data), _reserved(size), _ownsData(ownsData) {}
+	DataBuffer(T* data, size_t size, bool ownsData = false)
+		: _dataPtr(data), _reserved(size), _size(size), _ownsData(ownsData) {}
 	~DataBuffer() { destroy(); }
 
-	T get(size_t idx) { assert(idx < _reserved); return _dataPtr[idx]; }
-	void set(size_t idx, T v) { assert(idx < _reserved); _dataPtr[idx] = v; }
+	T get(size_t idx) { assert(idx < _size); return _dataPtr[idx]; }
+	void set(size_t idx, T v) { assert(idx < _size); _dataPtr[idx] = v; }
 	int find() {}
 	
 	std::string_view toString() {
-		size_t len = strnlen(_dataPtr, _reserved);
+		size_t len = strnlen(_dataPtr, _size);
 		return std::string_view(_dataPtr, len);
 	}
 
 	uint64_t hash() {
-		return XXH3_64bits((const void*)_dataPtr, _reserved * sizeof(T));
+		return XXH3_64bits((const void*)_dataPtr, _size * sizeof(T));
 	}
 
 	void write(const T* source, size_t size) {
-		assert(size <= _size);
+		if (size > _size) {
+			throw std::out_of_range("DataBuffer write exceeds buffer size");
+		}
 		memcpy(_dataPtr, source, size * sizeof(T));
 	}
 
@@ -45,18 +49,31 @@ public:
 
 	const T* getData() const { return _dataPtr; }
 
-	size_t size() const { return _reserved; }
+	size_t size() const { return _size; }
+	size_t capacity() const { return _reserved; }
 
 	uint32_t readUint32(size_t pos) {
-		return *((uint32_t*)(_dataPtr + pos));
+		if (pos > _size || _size - pos < sizeof(uint32_t)) {
+			throw std::out_of_range("DataBuffer uint32 read exceeds buffer size");
+		}
+		uint32_t value;
+		memcpy(&value, _dataPtr + pos, sizeof(value));
+		return value;
 	}
 
 	int32_t readInt32(size_t pos) {
-		return *((uint32_t*)(_dataPtr + pos));
+		if (pos > _size || _size - pos < sizeof(int32_t)) {
+			throw std::out_of_range("DataBuffer int32 read exceeds buffer size");
+		}
+		int32_t value;
+		memcpy(&value, _dataPtr + pos, sizeof(value));
+		return value;
 	}
 
 	DataBuffer<T> slice(size_t pos, size_t size) {
-		assert(pos + size <= _reserved);
+		if (pos > _size || size > _size - pos) {
+			throw std::out_of_range("DataBuffer slice exceeds buffer size");
+		}
 		return DataBuffer<T>(_dataPtr + pos, size);
 	}
 
@@ -65,20 +82,25 @@ public:
 	}
 
 	void reserve(size_t size) {
-		assert(_reserved == 0 || _ownsData);
 		if (size > _reserved) {
+			if (_reserved != 0 && !_ownsData) {
+				throw std::logic_error("Cannot grow a non-owning DataBuffer");
+			}
+
+			const size_t oldSize = _size;
 			T* data = new T[size];
 
-			if (_reserved > 0) {
-				memcpy(data, _dataPtr, size * sizeof(T));
+			if (oldSize > 0) {
+				memcpy(data, _dataPtr, oldSize * sizeof(T));
+			}
+			if (_dataPtr) {
 				destroy();
 			}
 
 			_dataPtr = data;
 			_reserved = size;
+			_size = oldSize;
 			_ownsData = true;
-		} else if (_dataPtr) {
-			_reserved = size;
 		}
 	}
 
@@ -92,20 +114,21 @@ public:
 			delete[] _dataPtr;
 			_dataPtr = nullptr;
 			_reserved = 0;
+			_size = 0;
 			_ownsData = false;
 		}
 	}
 
 	size_t copyFrom(DataBuffer* other) {
-		size_t writeAmount = std::min(_reserved, other->size());
+		size_t writeAmount = std::min(_size, other->size());
 		memcpy(_dataPtr, other->_dataPtr, writeAmount * sizeof(T));
 		_size = std::max(_size, writeAmount);
 		return writeAmount;
 	}
 
 	void copyTo(DataBuffer* target) const {
-		target->resize(_reserved);
-		target->write(_dataPtr, _reserved);
+		target->resize(_size);
+		target->write(_dataPtr, _size);
 	}
 
 	DataBuffer clone() const {

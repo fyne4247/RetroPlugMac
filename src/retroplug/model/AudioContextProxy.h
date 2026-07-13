@@ -72,9 +72,10 @@ public:
 	void fetchResources(FetchStateRequest& req, std::function<void(const FetchStateResponse&)> cb) {
 		prepareFetch(req);
 		FetchStateResponse res;
-		_audioController->getLock()->lock();
-		_audioController->fetchState(req, res);
-		_audioController->getLock()->unlock();
+		{
+			std::scoped_lock lock(*_audioController->getLock());
+			_audioController->fetchState(req, res);
+		}
 		cb(res);
 	}
 
@@ -95,9 +96,10 @@ public:
 
 		if (immediate) {
 			FetchStateResponse res;
-			_audioController->getLock()->lock();
-			_audioController->fetchState(req, res);
-			_audioController->getLock()->unlock();
+			{
+				std::scoped_lock lock(*_audioController->getLock());
+				_audioController->fetchState(req, res);
+			}
 			cb(res);
 		} else {
 			_node->request<calls::FetchState>(NodeTypes::Audio, req, std::forward<std::function<void(const FetchStateResponse&)>>(cb));
