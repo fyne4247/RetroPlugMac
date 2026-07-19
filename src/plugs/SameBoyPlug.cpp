@@ -18,8 +18,6 @@ extern "C" {
 
 const size_t LINK_TICKS_MAX = 3907;
 
-const size_t MAX_SERIAL_ITEMS = 128;
-const size_t MAX_BUTTON_ITEMS = 64;
 const GB_model_t DEFAULT_GAMEBOY_MODEL = GB_model_t::GB_MODEL_CGB_C;
 
 
@@ -155,7 +153,7 @@ void SameBoyPlug::loadRom(const char* data, size_t size, const SameBoySettings& 
 	GB_load_rom_from_buffer(_state.gb, (const uint8_t*)data, size);
 	GB_set_rendering_disabled(_state.gb, false);
 
-	_resetSamples = (int)(_sampleRate / 2);
+	_resetSamples = (size_t)(_sampleRate / 2);
 }
 
 void SameBoyPlug::reset(GameboyModel model, bool fastBoot) {
@@ -166,7 +164,7 @@ void SameBoyPlug::reset(GameboyModel model, bool fastBoot) {
 
 	GB_switch_model_and_reset(_state.gb, getGameboyModelId(model));
 
-	_resetSamples = (int)(_sampleRate / 2);
+	_resetSamples = (size_t)(_sampleRate / 2);
 }
 
 void SameBoyPlug::setSampleRate(double sampleRate) {
@@ -398,8 +396,8 @@ void SameBoyPlug::patchMemory(DirectAccessType::Enum memoryType, DataBuffer<char
 	}
 }
 
-void SameBoyPlug::updateAV(int audioFrames) {
-	int sampleCount = audioFrames * 2;
+void SameBoyPlug::updateAV(size_t audioFrames) {
+	const size_t sampleCount = audioFrames * 2;
 	/*if (sampleCount > _audioScratchSize) {
 		if (_audioScratch) {
 			delete[] _audioScratch;
@@ -411,11 +409,11 @@ void SameBoyPlug::updateAV(int audioFrames) {
 	}*/
 
 	if (_state.currentAudioFrames >= (size_t)audioFrames && _audioBuffer && _audioBuffer->data) {
-		if (_resetSamples <= 0) {
+		if (_resetSamples == 0) {
 			SampleConverter::s16_to_f32(_audioBuffer->data->data(), (int16_t*)_state.audioBuffer.data(), sampleCount);
 		} else {
 			_audioBuffer->data->clear();
-			_resetSamples -= audioFrames;
+			_resetSamples = audioFrames >= _resetSamples ? 0 : _resetSamples - audioFrames;
 		}
 
 	} else {

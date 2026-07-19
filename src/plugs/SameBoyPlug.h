@@ -82,7 +82,7 @@ private:
 	SameBoyPlugDesc _desc;
 	SameBoySettings _settings;
 
-	int _resetSamples = 0;
+	size_t _resetSamples = 0;
 
 	double _sampleRate = 48000;
 
@@ -175,7 +175,7 @@ public:
 	void patchMemory(DirectAccessType::Enum memoryType, DataBuffer<char>* data, size_t offset = 0);
 
 private:
-	void updateAV(int audioFrames);
+	void updateAV(size_t audioFrames);
 
 	void init(GameboyModel model);
 };
