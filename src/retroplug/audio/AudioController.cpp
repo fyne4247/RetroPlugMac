@@ -140,6 +140,10 @@ bool AudioController::getSram(SystemIndex idx, DataBuffer<char>* target) {
 	return false;
 }
 
+bool AudioController::enqueueMidi(int offset, int status, int data1, int data2) {
+	return _midiQueue.try_enqueue(AudioMidiEvent { offset, status, data1, data2 });
+}
+
 void AudioController::onMenu(SystemIndex idx, std::vector<Menu*>& menus) {
 	auto ctx = _lua;
 	if (ctx) {
@@ -154,7 +158,18 @@ void AudioController::process(float** outputs, size_t frameCount) {
 	auto ctx = _lua;
 	// TODO: This mutex is temporary until I find a good way of sending context menus
 	// across threads!
-	std::scoped_lock lock(_lock);
+	std::unique_lock lock(_lock, std::try_to_lock);
+	if (!lock.owns_lock()) {
+		return;
+	}
+
+	AudioMidiEvent midi;
+	while (_midiQueue.try_dequeue(midi)) {
+		if (ctx && ctx->isValid()) {
+			ctx->onMidi(midi.offset, midi.status, midi.data1, midi.data2);
+		}
+	}
+
 	if (ctx && ctx->isValid()) {
 		ctx->update(frameCount);
 	}

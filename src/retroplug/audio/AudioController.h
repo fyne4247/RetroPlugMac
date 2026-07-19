@@ -5,8 +5,16 @@
 #include "luawrapper/AudioLuaContext.h"
 #include "model/ProcessingContext.h"
 #include "messaging.h"
+#include "micromsg/readerwriterqueue.h"
 
 using AudioLuaContextPtr = std::shared_ptr<AudioLuaContext>;
+
+struct AudioMidiEvent {
+	int offset;
+	int status;
+	int data1;
+	int data2;
+};
 
 class AudioController {
 private:
@@ -15,6 +23,7 @@ private:
 	Node* _node = nullptr;
 	TimeInfo* _timeInfo;
 	std::mutex _lock;
+	moodycamel::ReaderWriterQueue<AudioMidiEvent> _midiQueue { 256 };
 	double _sampleRate;
 
 public:
@@ -30,6 +39,7 @@ public:
 	void fetchState(const FetchStateRequest& req, FetchStateResponse& state);
 
 	bool getSram(SystemIndex idx, DataBuffer<char>* target);
+	bool enqueueMidi(int offset, int status, int data1, int data2);
 
 	void onMenu(SystemIndex idx, std::vector<Menu*>& menus);
 

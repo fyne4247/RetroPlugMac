@@ -14,6 +14,8 @@ struct AudioSettings {
 
 class ProcessingContext {
 private:
+	static constexpr size_t PREALLOCATED_AUDIO_FRAMES = 16384;
+
 	std::vector<SameBoyPlugPtr> _systems;
 	Node* _node = nullptr;
 
@@ -63,6 +65,8 @@ public:
 	void process(float** outputs, size_t frameCount);
 
 private:
+	void resizeAudioBuffer(SystemIndex idx, size_t frameCount);
+
 	void getLinkTargets(std::vector<SameBoyPlugPtr>& targets, SameBoyPlugPtr ignore);
 
 	void updateLinkTargets();

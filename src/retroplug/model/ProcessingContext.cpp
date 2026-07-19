@@ -6,7 +6,19 @@ ProcessingContext::ProcessingContext() {
 	_systems.reserve(MAX_SYSTEMS);
 	for (size_t i = 0; i < MAX_SYSTEMS; ++i) {
 		_systems.push_back(nullptr);
+		_audioBuffers[i].data = std::make_shared<DataBuffer<float>>(PREALLOCATED_AUDIO_FRAMES * 2);
+		_audioBuffers[i].data->resize(0);
 	}
+}
+
+void ProcessingContext::resizeAudioBuffer(SystemIndex idx, size_t frameCount) {
+	auto& buffer = _audioBuffers[idx];
+	if (!buffer.data) {
+		buffer.data = std::make_shared<DataBuffer<float>>();
+	}
+
+	buffer.data->resize(frameCount * 2);
+	buffer.frameCount = frameCount;
 }
 
 ProcessingContext::~ProcessingContext() {
@@ -75,12 +87,10 @@ SameBoyPlugPtr ProcessingContext::swapSystem(SystemIndex idx, SameBoyPlugPtr ins
 
 		// TODO: Instantiate this in the UI thread and send with the SwapSystem message
 		if (_audioSettings.frameCount > 0) {
-			_audioBuffers[idx].data = std::make_shared<DataBuffer<float>>(_audioSettings.frameCount * 2);
-			_audioBuffers[idx].frameCount = _audioSettings.frameCount;
+			resizeAudioBuffer(idx, _audioSettings.frameCount);
 		}
 	} else {
-		_audioBuffers[idx].data = nullptr;
-		_audioBuffers[idx].frameCount = 0;
+		resizeAudioBuffer(idx, 0);
 	}
 
 	updateLinkTargets();
@@ -112,12 +122,10 @@ SameBoyPlugPtr ProcessingContext::removeSystem(SystemIndex idx) {
 
 	for (size_t i = 0; i < MAX_SYSTEMS; ++i) {
 		if (!_systems[i]) {
-			_audioBuffers[i].data = nullptr;
-			_audioBuffers[i].frameCount = 0;
+			resizeAudioBuffer((SystemIndex)i, 0);
 		} else {
 			if (_audioSettings.frameCount > 0) {
-				_audioBuffers[i].data = std::make_shared<DataBuffer<float>>(_audioSettings.frameCount * 2);
-				_audioBuffers[i].frameCount = _audioSettings.frameCount;
+				resizeAudioBuffer((SystemIndex)i, _audioSettings.frameCount);
 			}
 		}
 	}
@@ -135,8 +143,7 @@ void ProcessingContext::process(float** outputs, size_t frameCount) {
 
 		for (size_t i = 0; i < MAX_SYSTEMS; ++i) {
 			if (_systems[i]) {
-				_audioBuffers[i].data = std::make_shared<DataBuffer<float>>(frameCount * 2);
-				_audioBuffers[i].frameCount = frameCount;
+				resizeAudioBuffer((SystemIndex)i, frameCount);
 			}
 		}
 	}
@@ -208,7 +215,7 @@ void ProcessingContext::process(float** outputs, size_t frameCount) {
 	}
 
 	for (size_t i = 0; i < MAX_SYSTEMS; i++) {
-		if (_audioBuffers[i].data) {
+		if (_systems[i] && _audioBuffers[i].data) {
 			float* audio = _audioBuffers[i].data->data();
 			for (size_t j = 0; j < _audioSettings.frameCount; j++) {
 				outputs[i * chanMultipler][j] += audio[j * 2];

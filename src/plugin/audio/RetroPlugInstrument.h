@@ -8,7 +8,6 @@ using namespace igraphics;
 
 class RetroPlugInstrument final : public Plugin {
 private:
-	float* _sampleScratch;
 	bool _transportRunning = false;
 
 	RetroPlugController _controller;

@@ -45,8 +45,6 @@ public:
 		return _timeInfo;
 	}
 
-	std::mutex* getMenuLock() { return _audioController.getLock(); }
-
 	void update(double delta);
 
 	void init(iplug::igraphics::IRECT bounds);
@@ -56,8 +54,9 @@ public:
 	}
 
 	AudioController* audioController() { return &_audioController; }
-
-	AudioLuaContextPtr& audioLua() { return _audioController.getLuaContext(); }
+	bool processMidi(int offset, int status, int data1, int data2) {
+		return _audioController.enqueueMidi(offset, status, data1, data2);
+	}
 
 	DataBufferPtr saveState() { return _uiLua.saveState(); }
 

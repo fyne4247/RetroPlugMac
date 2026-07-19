@@ -12,9 +12,6 @@
 RetroPlugInstrument::RetroPlugInstrument(const InstanceInfo& info)
 	: Plugin(info, MakeConfig(0, 0)), _controller(GetSampleRate()) 
 {
-	// FIXME: Choose a more realistic size for this based on GetBlockSize()
-	_sampleScratch = new float[1024 * 1024];
-
 #if IPLUG_EDITOR
 	mMakeGraphicsFunc = [&]() {
 		return MakeGraphics(*this, PLUG_WIDTH, PLUG_HEIGHT, PLUG_FPS, 1.);
@@ -38,9 +35,7 @@ RetroPlugInstrument::RetroPlugInstrument(const InstanceInfo& info)
 #endif
 }
 
-RetroPlugInstrument::~RetroPlugInstrument() {
-	delete[] _sampleScratch;
-}
+RetroPlugInstrument::~RetroPlugInstrument() = default;
 
 #if IPLUG_DSP
 void RetroPlugInstrument::ProcessBlock(sample** inputs, sample** outputs, int frameCount) {
@@ -110,11 +105,7 @@ int RetroPlugInstrument::UnserializeState(const IByteChunk& chunk, int pos) {
 
 void RetroPlugInstrument::ProcessMidiMsg(const IMidiMsg& msg) {
 	TRACE;
-
-	std::scoped_lock lock(*_controller.getMenuLock()); // Temporary
-	if (_controller.audioLua()) {
-		_controller.audioLua()->onMidi(msg.mOffset, msg.mStatus, msg.mData1, msg.mData2);
-	}
+	_controller.processMidi(msg.mOffset, msg.mStatus, msg.mData1, msg.mData2);
 }
 
 void RetroPlugInstrument::OnReset() {
