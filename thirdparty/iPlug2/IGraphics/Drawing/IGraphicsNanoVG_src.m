@@ -8,7 +8,7 @@
  ==============================================================================
 */
 
-#if !__has_feature(objc_arc)
+#if defined(IGRAPHICS_METAL) && !__has_feature(objc_arc)
 #error This file must be compiled with Arc. Use -fobjc-arc flag
 #endif
 

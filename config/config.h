@@ -25,7 +25,10 @@
 #ifdef APP_API
 #define PLUG_CHANNEL_IO "0-2"
 #else
-#define PLUG_CHANNEL_IO "0-8"
+// Hosts such as Logic filter instruments by the channel count of the current
+// strip. Advertise the normal stereo layout as well as RetroPlug's optional
+// eight-channel output layout so the AU is available in both menus.
+#define PLUG_CHANNEL_IO "0-2 0-8"
 #endif
 
 #define PLUG_LATENCY 0

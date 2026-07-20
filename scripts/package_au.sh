@@ -1,9 +1,12 @@
 #!/bin/bash
 # Package the premake-built AU binary into a proper .component and install it.
+# Usage: package_au.sh [configuration] [install-directory]
+# A system-wide install usually requires: sudo package_au.sh Release /Library/Audio/Plug-Ins/Components
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CONFIG="${1:-Debug}"
+INSTALL_DIR="${2:-$HOME/Library/Audio/Plug-Ins/Components}"
 BIN_DIR="$ROOT/build/xcode4/bin/x64/$CONFIG"
 # Premake may emit either name depending on PRODUCT_NAME settings
 if [[ -f "$BIN_DIR/RetroPlug" ]]; then
@@ -33,10 +36,31 @@ printf 'BNDL????' > "$DEST/Contents/PkgInfo"
 # use and does not require an Apple Developer account.
 codesign --force --deep --sign - "$DEST"
 
-INSTALL_DIR="$HOME/Library/Audio/Plug-Ins/Components"
+if [[ -d "$INSTALL_DIR" && ! -w "$INSTALL_DIR" ]]; then
+  echo "error: install directory is not writable: $INSTALL_DIR" >&2
+  echo "rerun with administrator privileges for a system-wide install" >&2
+  exit 1
+fi
+
 mkdir -p "$INSTALL_DIR"
-rm -rf "$INSTALL_DIR/RetroPlug.component"
-cp -R "$DEST" "$INSTALL_DIR/RetroPlug.component"
+TARGET="$INSTALL_DIR/RetroPlug.component"
+STAGING="$INSTALL_DIR/.RetroPlug.component.install.$$"
+BACKUP="$INSTALL_DIR/.RetroPlug.component.previous.$$"
+
+# Finish the copy before moving the existing component out of the way. Both
+# renames then occur on the destination filesystem and can be rolled back.
+rm -rf "$STAGING" "$BACKUP"
+cp -R "$DEST" "$STAGING"
+if [[ -e "$TARGET" ]]; then
+  mv "$TARGET" "$BACKUP"
+fi
+if ! mv "$STAGING" "$TARGET"; then
+  if [[ -e "$BACKUP" ]]; then
+    mv "$BACKUP" "$TARGET"
+  fi
+  exit 1
+fi
+rm -rf "$BACKUP"
 killall -9 AudioComponentRegistrar 2>/dev/null || true
 
 echo "Installed: $INSTALL_DIR/RetroPlug.component"
