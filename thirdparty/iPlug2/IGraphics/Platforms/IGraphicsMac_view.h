@@ -133,6 +133,7 @@ using namespace igraphics;
 - (BOOL) isOpaque;
 - (BOOL) acceptsFirstResponder;
 - (BOOL) acceptsFirstMouse: (NSEvent*) pEvent;
+- (BOOL) performKeyEquivalent: (NSEvent*) pEvent;
 - (void) viewDidMoveToWindow;
 - (void) viewDidChangeBackingProperties: (NSNotification*) pNotification;
 - (void) drawRect: (NSRect) bounds;
@@ -189,4 +190,3 @@ using namespace igraphics;
 - (id) initWithIGraphicsView: (IGRAPHICS_VIEW*) pView;
 @end
 #endif
-

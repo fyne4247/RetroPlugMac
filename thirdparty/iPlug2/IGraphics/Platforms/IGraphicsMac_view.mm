@@ -556,6 +556,30 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
   return YES;
 }
 
+- (BOOL) performKeyEquivalent: (NSEvent*) pEvent
+{
+  NSWindow* pWindow = [self window];
+
+  if (!mGraphics || !pWindow || [pWindow firstResponder] != self || [pEvent type] != NSEventTypeKeyDown)
+    return [super performKeyEquivalent:pEvent];
+
+  const NSEventModifierFlags modifiers = [pEvent modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
+
+  // Logic resolves many unmodified keys as host commands before an embedded AU
+  // editor receives keyDown:.  Once the user has clicked the RetroPlug view, give
+  // those keys to the emulator.  Preserve normal macOS Command shortcuts except
+  // for RetroPlug's documented LSDj cut/copy/paste and project-save bindings.
+  if (modifiers & NSEventModifierFlagCommand)
+  {
+    NSString* chars = [[pEvent charactersIgnoringModifiers] lowercaseString];
+    if ([chars length] != 1 || [@"xcvs" rangeOfString:chars].location == NSNotFound)
+      return [super performKeyEquivalent:pEvent];
+  }
+
+  [self keyDown:pEvent];
+  return YES;
+}
+
 - (void) viewDidMoveToWindow
 {
   NSWindow* pWindow = [self window];
@@ -746,6 +770,10 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
 
 - (void) mouseDown: (NSEvent*) pEvent
 {
+  // Hosts can reclaim first-responder status after the editor is attached.  A
+  // click in the emulator is an explicit request to direct keyboard input here.
+  [[self window] makeFirstResponder:self];
+
   IMouseInfo info = [self getMouseLeft:pEvent];
   if (mGraphics)
   {

@@ -15,6 +15,8 @@ Visit the [releases](https://github.com/tommitytom/RetroPlug/releases) page to d
 ## Installation
 - Standalone:
   - Currently the standalone build is provided as a single executable file that can be placed anywhere you'd like.
+- Audio Unit (macOS):
+  - Copy `RetroPlug.component` to `/Library/Audio/Plug-Ins/Components` for all users, or `~/Library/Audio/Plug-Ins/Components` for the current user.
 - VST (Windows):
   - Place the plugin .dll in your VST search path.  These paths can generally be configured in your DAW, though the following tend to be the recommended defaults:
     - VST2 (Windows): `C:\Program Files\Common Files\VST2`
@@ -43,8 +45,8 @@ You can get to this folder quickly by using the `Settings -> Open Settings Folde
 The following are defined as the default keyboard and joypad mappings:
 |Button|Default key|Default pad button|
 |------|-----------|------------------|
-|A|W|B|
-|B|D|A|
+|A|D|B|
+|B|W|A|
 |Up|UpArrow|Up, Left Analog Up|
 |Down|DownArrow|Down, Left Analog Down|
 |Left|LeftArrow|Left, Left Analog Left|
@@ -70,6 +72,12 @@ There are also LSDj specific key bindings to actions:
 |ScreenRight|N/A|Right Analog Right|
 
 Additionally, `Tab` / `Pad Y` can be used to move between instances when multiple systems are loaded, and `Ctrl + S` can be used to save your project.
+
+### Logic Pro keyboard profile
+
+The macOS build includes a `Logic Pro (Z/X/A/S)` keyboard profile with `Z = B`, `X = A`, `A = Select`, `S = Start`, and the arrow keys as the D-pad. Select it by right-clicking the plugin display and choosing `Settings -> Keyboard -> Logic Pro (Z/X/A/S)`.
+
+Click the plugin display to give it keyboard focus. While focused, unmodified keys are captured by RetroPlug instead of triggering Logic's key commands. Standard macOS Command shortcuts continue to reach Logic, except for RetroPlug's documented save and LSDj cut/copy/paste shortcuts.
 
 ### Modifying Button Maps
 
