@@ -172,15 +172,24 @@ int main(int argc, char** argv) {
 		state.pool.start(threadCount);
 
 		for (auto& ns : state.modules) {
-			state.pool.enqueue([&]() { 
-				processModule(ns, state);
-				writeSourceFile(ns, targetDir); 
+			// Capture the current module, not the range-for reference variable.
+			// With a blanket reference capture, workers may start after the loop has
+			// advanced and compile the same module repeatedly, leaving other embedded
+			// Lua tables empty or stale.
+			ModuleDesc* module = &ns;
+			state.pool.enqueue([module, &state, targetDir]() {
+				processModule(*module, state);
+				writeSourceFile(*module, targetDir);
 			});
 		}
 
-		writeHeaderFile(state, targetDir);
-
 		state.pool.wait();
+
+		// Sorting the module vector while workers still hold pointers into it is a
+		// data race: std::sort moves ModuleDesc objects between those addresses.
+		// Wait until all module compilation and source generation has completed
+		// before sorting the vector for the shared header.
+		writeHeaderFile(state, targetDir);
 
 		auto endTime = std::chrono::high_resolution_clock::now();
 		auto ms = endTime - startTime;

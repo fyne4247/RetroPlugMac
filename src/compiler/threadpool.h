@@ -85,7 +85,10 @@ public:
 		for (size_t i = 0; i < workerCount; ++i) {
 			Worker& worker = _workers[i];
 			worker.runner.setId(i + 1);
-			worker.thread = std::thread([&]() { worker.runner.run(_taskQueue); });
+			Worker* workerPtr = &worker;
+			worker.thread = std::thread([this, workerPtr]() {
+				workerPtr->runner.run(_taskQueue);
+			});
 		}
 	}
 
