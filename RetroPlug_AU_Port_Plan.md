@@ -1,7 +1,7 @@
-# Grok Build Plan: RetroPlug → Native Apple Silicon Audio Unit for Logic Pro
+# RetroPlugMac Build Plan: Native Apple Silicon Audio Unit for Logic Pro
 
 **Fork**: https://github.com/fyne4247/RetroPlugMac  
-**Upstream**: https://github.com/tommitytom/RetroPlug (dormant since ~Oct 2022)  
+**Upstream**: https://github.com/tommitytom/RetroPlug (original project; development resumed in 2026)
 **Goal**: Native **arm64** AUv2 `.component` for Logic Pro — **no Rosetta**.
 
 **Date**: July 2026  
@@ -18,10 +18,10 @@
 |------|--------|
 | arm64 standalone APP | Builds (`build/xcode4/bin/x64/Debug/RetroPlug_app_x64.app`) — optional |
 | arm64 **AUv2** | **BUILDS + `auval` PASS** |
-| Installed path | `~/Library/Audio/Plug-Ins/Components/RetroPlug.component` |
+| Installed path | `/Library/Audio/Plug-Ins/Components/RetroPlugMac.component` |
 | Validate | `auval -v aumu 2wvF Tmtt` → **AU VALIDATION SUCCEEDED** |
 | Arch | `Mach-O 64-bit bundle arm64` |
-| Logic Pro | Installed; load as AU Instrument → tommitytom → RetroPlug |
+| Logic Pro | Installed; load as AU Instrument → fyne4247 → RetroPlugMac |
 
 ### AU identity (updated)
 
@@ -32,7 +32,7 @@
 | Manufacturer | **`Tmtt`** (was `tmtt`; auval requires ≥1 non-lowercase char) |
 | Factory | `RetroPlug_Factory` |
 | Entry | `RetroPlug_Entry` |
-| Bundle ID | `com.tommitytom.audiounit.RetroPlug` |
+| Bundle ID | `com.fyne4247.audiounit.RetroPlugMac` |
 
 ### Rebuild + install (canonical)
 
@@ -65,7 +65,7 @@ killall -9 AudioComponentRegistrar 2>/dev/null || true
 auval -v aumu 2wvF Tmtt
 ```
 
-Then **restart Logic Pro** → Software Instrument → AU Instruments → tommitytom → RetroPlug.
+Then **restart Logic Pro** → Software Instrument → AU Instruments → fyne4247 → RetroPlugMac.
 
 If macOS blocks: System Settings → Privacy & Security → Open Anyway.
 
@@ -105,8 +105,8 @@ Key fixes retained for all targets:
 - Implemented `iplug2.project.auv2` in `thirdparty/iPlug2/lua/iplug2.lua`
 - Scheme: `RetroPlug-auv2`
 - Product binary: `build/xcode4/bin/x64/Debug/RetroPlug` (mh_bundle arm64)
-- Packaged: `build/xcode4/bin/x64/Debug/RetroPlug.component`
-- Installed: `~/Library/Audio/Plug-Ins/Components/RetroPlug.component`
+- Packaged: `build/xcode4/bin/x64/Debug/RetroPlugMac.component`
+- Installed: `/Library/Audio/Plug-Ins/Components/RetroPlugMac.component`
 - **`auval -v aumu 2wvF Tmtt` → AU VALIDATION SUCCEEDED**
   - Open/init, format, render (multi SR/buffer), MIDI: PASS
   - Plugin loads Lua (LSDj, Arduinoboy, RetroPlug components registered)
@@ -114,7 +114,7 @@ Key fixes retained for all targets:
 ### Phase 3 — Logic Pro smoke test — NEXT (manual)
 
 1. Open Logic Pro (Apple Silicon, no Rosetta).
-2. New software instrument track → AU Instruments → tommitytom → RetroPlug.
+2. New software instrument track → AU Instruments → fyne4247 → RetroPlugMac.
 3. Load a legally obtained LSDJ ROM (dev-only copies may live under `LSDj/` — **do not redistribute**).
 4. Confirm display + audio + MIDI clock / mGB notes as desired.
 5. Save project; re-open; confirm state restore (ROM/.sav expectations per original README).

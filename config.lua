@@ -1,12 +1,12 @@
 return {
 	plugin = {
 		version = "0.3.4",
-		name = "RetroPlug",
-		author = "tommitytom",
+		name = "RetroPlugMac",
+		author = "fyne4247",
 		uniqueId = "2wvF",
 		authorId = "Tmtt",
-		url = "https://tommitytom.co.uk",
-		email = "retroplug@tommitytom.co.uk",
+		url = "https://github.com/fyne4247/RetroPlugMac",
+		email = "",
 		copyright = "Copyright 2021 Tom Yaxley"
 	},
 	config = {

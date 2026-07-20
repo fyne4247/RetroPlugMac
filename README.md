@@ -1,5 +1,5 @@
-# RetroPlug
-A frontend for the SameBoy GameBoy emulator, with a focus on music creation.  It runs standalone and can be used as an audio plugin (VST) in your favourite DAW!
+# RetroPlugMac
+An Apple Silicon/macOS continuation of Tom Yaxley's RetroPlug 0.3.x: a frontend for the SameBoy GameBoy emulator focused on music creation. This fork provides a Logic-compatible Audio Unit while preserving the original project's emulator, MIDI, LSDj, and Lua architecture.
 
 ## Features
 - Wraps [SameBoy](https://github.com/LIJI32/SameBoy) v0.15.7
@@ -10,13 +10,13 @@ A frontend for the SameBoy GameBoy emulator, with a focus on music creation.  It
 - Lua scripting
 
 ## Download
-Visit the [releases](https://github.com/tommitytom/RetroPlug/releases) page to download the latest version.
+Visit the [RetroPlugMac releases](https://github.com/fyne4247/RetroPlugMac/releases) page to download the latest macOS build. The original RetroPlug project and its newer rewrite remain available at [tommitytom/RetroPlug](https://github.com/tommitytom/RetroPlug).
 
 ## Installation
 - Standalone:
   - Currently the standalone build is provided as a single executable file that can be placed anywhere you'd like.
 - Audio Unit (macOS):
-  - Copy `RetroPlug.component` to `/Library/Audio/Plug-Ins/Components` for all users, or `~/Library/Audio/Plug-Ins/Components` for the current user.
+  - Copy `RetroPlugMac.component` to `/Library/Audio/Plug-Ins/Components` for all users, or `~/Library/Audio/Plug-Ins/Components` for the current user.
 - VST (Windows):
   - Place the plugin .dll in your VST search path.  These paths can generally be configured in your DAW, though the following tend to be the recommended defaults:
     - VST2 (Windows): `C:\Program Files\Common Files\VST2`

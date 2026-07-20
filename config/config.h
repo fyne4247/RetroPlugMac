@@ -6,20 +6,20 @@
 #define SEMVER_MINOR 3
 #define SEMVER_PATCH 4
 
-#define PLUG_NAME "RetroPlug"
-#define PLUG_MFR "tommitytom"
+#define PLUG_NAME "RetroPlugMac"
+#define PLUG_MFR "fyne4247"
 #define PLUG_VERSION_HEX 0x00000304
 #define PLUG_VERSION_STR VERSION_STRING(SEMVER_MAJOR, SEMVER_MINOR, SEMVER_PATCH)
 #define PLUG_UNIQUE_ID '2wvF'
 // auval requires at least one non-lowercase char in manufacturer OSType
 #define PLUG_MFR_ID 'Tmtt'
-#define PLUG_URL_STR "https://tommitytom.co.uk"
-#define PLUG_EMAIL_STR "retroplug@tommitytom.co.uk"
+#define PLUG_URL_STR "https://github.com/fyne4247/RetroPlugMac"
+#define PLUG_EMAIL_STR ""
 #define PLUG_COPYRIGHT_STR "Copyright 2021 Tom Yaxley"
 #define PLUG_CLASS_NAME RetroPlugInstrument
 
-#define BUNDLE_NAME "RetroPlug"
-#define BUNDLE_MFR "tommitytom"
+#define BUNDLE_NAME "RetroPlugMac"
+#define BUNDLE_MFR "fyne4247"
 #define BUNDLE_DOMAIN "com"
 
 #ifdef APP_API
@@ -50,8 +50,8 @@
 #define AUV2_VIEW_CLASS_STR "RetroPlug_View"
 
 #define AAX_TYPE_IDS 'EFN1', 'EFN2'
-#define AAX_PLUG_MFR_STR "tommitytom"
-#define AAX_PLUG_NAME_STR "RetroPlug\nIPIS"
+#define AAX_PLUG_MFR_STR "fyne4247"
+#define AAX_PLUG_NAME_STR "RetroPlugMac\nIPIS"
 #define AAX_DOES_AUDIOSUITE 0
 #define AAX_PLUG_CATEGORY_STR "Synth"
 
