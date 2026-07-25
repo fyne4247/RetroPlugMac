@@ -44,7 +44,7 @@ cd "/Users/fish4247/Claude Code Projects/RetroPlugMac-main"
 # Use pinned premake 5.0.0-beta1 (./premake5-mac). Homebrew beta8 breaks iplug2.lua.
 ./premake5-mac xcode4
 sed -i '' 's+/\* IGraphicsNanoVG_src.m \*/;+/\* IGraphicsNanoVG_src.m \*/; settings = {COMPILER_FLAGS = "-fobjc-arc"; };+g' \
-  build/xcode4/RetroPlug-auv2.xcodeproj/project.pbxproj
+  build/xcode4/RetroPlugMac-auv2.xcodeproj/project.pbxproj
 
 # Host tool for embedded Lua (once, or when scripts change)
 xcodebuild -workspace build/xcode4/RetroPlug.xcworkspace -scheme ScriptCompiler \
@@ -53,7 +53,7 @@ xcodebuild -workspace build/xcode4/RetroPlug.xcworkspace -scheme ScriptCompiler 
 ( cd build/xcode4 && ./bin/x64/Debug/ScriptCompiler ../../src/compiler.config.lua )
 
 # Build AU
-xcodebuild -workspace build/xcode4/RetroPlug.xcworkspace -scheme RetroPlug-auv2 \
+xcodebuild -workspace build/xcode4/RetroPlug.xcworkspace -scheme RetroPlugMac-auv2 \
   -configuration Debug -destination 'platform=macOS,arch=arm64' \
   CODE_SIGNING_ALLOWED=NO ONLY_ACTIVE_ARCH=YES build
 
@@ -103,7 +103,7 @@ Key fixes retained for all targets:
 ### Phase 2 — AUv2 for Logic — DONE (validation)
 
 - Implemented `iplug2.project.auv2` in `thirdparty/iPlug2/lua/iplug2.lua`
-- Scheme: `RetroPlug-auv2`
+- Scheme: `RetroPlugMac-auv2`
 - Product binary: `build/xcode4/bin/x64/Debug/RetroPlug` (mh_bundle arm64)
 - Packaged: `build/xcode4/bin/x64/Debug/RetroPlugMac.component`
 - Installed: `/Library/Audio/Plug-Ins/Components/RetroPlugMac.component`
@@ -140,6 +140,22 @@ Key fixes retained for all targets:
 Plugin code: MIT (upstream). Do not redistribute LSDJ (see license text in earlier plan revisions).
 
 ---
+
+## Building from a clean checkout
+
+Incremental builds in a long-lived working copy can hide missing inputs. When
+building a fresh clone or worktree, note:
+
+1. `src/generated/bootroms/*.h` is **not** in the repository (`src/generated` is
+   ignored). The `SameBoyBootRoms` target cannot regenerate it here: the
+   installed rgbds is newer than SameBoy 0.15.7's assembly syntax and fails with
+   `Undefined macro AGB`. Copy the headers from a working copy or re-extract them
+   from the SameBoy v0.15.7 release, as in Phase 1 item 4.
+2. That target's prebuild step also assumes `build/xcode4/obj/x64/$CONFIG/SameBoyBootRoms/`
+   already exists and fails with `Failed to create ... SameBoyLogo.2bpp` if it does not.
+
+Build order for a clean tree: `ScriptCompiler` → run it over `src/compiler.config.lua`
+→ `RetroPlugMac-auv2` → `scripts/package_au.sh`.
 
 ## Known caveats
 
