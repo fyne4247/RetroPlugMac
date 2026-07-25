@@ -14,6 +14,8 @@
 #import <QuartzCore/QuartzCore.h>
 #endif
 
+#include <set>
+
 #include "IGraphicsMac.h"
 #include "IGraphicsStructs.h"
 
@@ -126,6 +128,10 @@ using namespace igraphics;
   bool mMouseOutDuringDrag;
   IRECTList mDirtyRects;
   IColorPickerHandlerFunc mColorPickerFunc;
+  // Virtual key codes currently reported as held.  macOS stops delivering key
+  // up (and modifier flagsChanged) events once the view loses focus, so these
+  // are tracked in order to synthesise the missing releases.
+  std::set<int> mHeldKeys;
 @public
   IGraphicsMac* mGraphics; // OBJC instance variables have to be pointers
 }
@@ -158,6 +164,9 @@ using namespace igraphics;
 - (void) keyDown: (NSEvent*) pEvent;
 - (void) keyUp: (NSEvent*) pEvent;
 - (void) flagsChanged:(NSEvent *) pEvent;
+- (BOOL) resignFirstResponder;
+- (void) windowDidResignKey: (NSNotification*) pNotification;
+- (void) releaseHeldKeys;
 //text entry
 - (void) removeFromSuperview;
 - (void) controlTextDidEndEditing: (NSNotification*) pNotification;

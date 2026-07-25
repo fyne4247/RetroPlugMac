@@ -583,12 +583,24 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
 - (void) viewDidMoveToWindow
 {
   NSWindow* pWindow = [self window];
-  
+
+  // The view can move between windows; drop any stale observation and held-key
+  // state before observing the new window.
+  [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                  name:NSWindowDidResignKeyNotification
+                                                object:nil];
+  [self releaseHeldKeys];
+
   if (pWindow)
   {
     [pWindow makeFirstResponder: self];
     [pWindow setAcceptsMouseMovedEvents: YES];
-    
+
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(windowDidResignKey:)
+                                                 name:NSWindowDidResignKeyNotification
+                                               object:pWindow];
+
     CGFloat newScale = [pWindow backingScaleFactor];
 
     if (mGraphics)
@@ -885,9 +897,18 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
   IKeyPress keyPress {utf8, code, static_cast<bool>(flag & kFSHIFT),
                                   static_cast<bool>(flag & kFCONTROL),
                                   static_cast<bool>(flag & kFALT)};
-  
+
+  if (!mGraphics)
+  {
+    [[self nextResponder] keyDown:pEvent];
+    return;
+  }
+
+  if (code != kVK_NONE)
+    mHeldKeys.insert(code);
+
   bool handle = mGraphics->OnKeyDown(mPrevX, mPrevY, keyPress);
-  
+
   if (!handle)
   {
     [[self nextResponder] keyDown:pEvent];
@@ -917,8 +938,16 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
                                   static_cast<bool>(flag & kFCONTROL),
                                   static_cast<bool>(flag & kFALT)};
   
+  if (!mGraphics)
+  {
+    [[self nextResponder] keyUp:pEvent];
+    return;
+  }
+
+  mHeldKeys.erase(code);
+
   bool handle = mGraphics->OnKeyUp(mPrevX, mPrevY, keyPress);
-  
+
   if (!handle)
   {
     [[self nextResponder] keyUp:pEvent];
@@ -927,13 +956,17 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
 
 - (void) flagsChanged:(NSEvent *) pEvent
 {
+    if (!mGraphics) {
+        return;
+    }
+
     int rawcode = [pEvent keyCode];
 
     int code = MacKeyCodeToVK(rawcode);
     if (code == 0) {
         return;
     }
-    
+
     char utf8[5] = { '\n' };
     IKeyPress keyPress {utf8, code, static_cast<bool>([pEvent modifierFlags] & NSEventModifierFlagShift),
                                     static_cast<bool>([pEvent modifierFlags] & NSEventModifierFlagCommand),
@@ -950,10 +983,48 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
     }
     
     if (down) {
+        mHeldKeys.insert(code);
         mGraphics->OnKeyDown(mPrevX, mPrevY, keyPress);
     } else {
+        mHeldKeys.erase(code);
         mGraphics->OnKeyUp(mPrevX, mPrevY, keyPress);
     }
+}
+
+// macOS delivers no key up (or modifier flagsChanged) event for keys that are
+// still down when the view stops being the first responder — Cmd-Tab away from
+// Logic while holding a key and the plugin never learns the key was released.
+// Anything relying on held-key state then stays latched until the editor is
+// reopened, so synthesise the releases here.
+- (void) releaseHeldKeys
+{
+  if (!mGraphics)
+  {
+    mHeldKeys.clear();
+    return;
+  }
+
+  std::set<int> held;
+  held.swap(mHeldKeys);
+
+  char utf8[5] = { 0 };
+
+  for (int code : held)
+  {
+    IKeyPress keyPress {utf8, code, false, false, false};
+    mGraphics->OnKeyUp(mPrevX, mPrevY, keyPress);
+  }
+}
+
+- (BOOL) resignFirstResponder
+{
+  [self releaseHeldKeys];
+  return [super resignFirstResponder];
+}
+
+- (void) windowDidResignKey: (NSNotification*) pNotification
+{
+  [self releaseHeldKeys];
 }
 
 - (void) scrollWheel: (NSEvent*) pEvent
