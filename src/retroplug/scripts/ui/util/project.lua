@@ -137,10 +137,40 @@ local function updgrade_json_to_pv100(p, config)
 	}
 end
 
+-- Returns true if the project predates the 1.0.0 project format.  A malformed
+-- or missing version string makes semver() throw, so failures are treated as
+-- "not a legacy project" rather than allowed to escape into the host.
+local function isLegacyProject(projectData)
+	if projectData.instances == nil then return false end
+
+	local ok, isLegacy = pcall(function()
+		return semver(projectData.version) <= semver(0, 2, 0)
+	end)
+
+	if ok == false then
+		log.warn("Project declares an unreadable version, ignoring legacy upgrade path")
+		return false
+	end
+
+	return isLegacy
+end
+
 local function upgradeAndValidateProject(projectData, config)
 	local err
-	if projectData.instances ~= nil and semver(projectData.version) <= semver(0, 2, 0) then
-		projectData, err = updgrade_json_to_pv100(projectData, config)
+
+	if type(projectData) ~= "table" then
+		return nil, "Failed to load project: Project data is not a table"
+	end
+
+	if isLegacyProject(projectData) then
+		-- Legacy documents are only shape-checked by the schema below, so the
+		-- upgrade itself has to tolerate arbitrary malformed input.
+		local ok, upgraded, upgradeErr = pcall(updgrade_json_to_pv100, projectData, config)
+		if ok == false then
+			return nil, "Failed to load project: Unable to upgrade legacy project"
+		end
+
+		projectData, err = upgraded, upgradeErr
 		--log.obj(projectData)
 	end
 
@@ -255,32 +285,52 @@ local function loadProject(data, config)
 	local err
 
 	local zip = ZipReader.new(data)
+
+	-- Every failure below has to close the reader before returning.  This runs
+	-- on host-supplied state chunks, which may be truncated or corrupt, so a
+	-- leaked reader here would accumulate on every failed project restore.
+	local function fail(msg)
+		if zip then zip:close() end
+		return nil, nil, Error(msg)
+	end
+
 	if zip:isValid() then
 		local entries = zip:entries()
 
 		if zipEntryExists(entries, PROJECT_LUA_FILENAME) then
 			local fileData = zip:read(PROJECT_LUA_FILENAME)
+			if fileData == nil or isNullPtr(fileData) then
+				return fail("Failed to load project: Project file unreadable")
+			end
+
 			local ok, loadedData = serpent.load(fileData:toString(), { safe = true })
 
 			if ok == false then
-				zip:close()
-				return nil, nil, Error("Failed to load project: Unable to parse lua project")
+				return fail("Failed to load project: Unable to parse lua project")
 			end
 
 			projectData = loadedData
 		else
-			return nil, nil, Error("Failed to load project: Project file missing")
+			return fail("Failed to load project: Project file missing")
 		end
 	else
+		zip:close()
 		zip = nil
 
 		log.info("Failed to load zip, trying to load legacy project")
-		local fileData, err = fileutil.loadPathOrData(data)
-		if err ~= nil then return nil, nil, err end
+		local fileData, loadErr = fileutil.loadPathOrData(data)
+		if loadErr ~= nil then return nil, nil, loadErr end
+		if fileData == nil or isNullPtr(fileData) then
+			return nil, nil, Error("Failed to load project: Unable to read file")
+		end
 
-		-- Old projects (<= v0.2.0) are encoded using JSON rather than lua
+		-- Old projects (<= v0.2.0) are encoded using JSON rather than lua.
+		-- Arbitrary bytes reach this path whenever the data is not a valid zip.
 		local stringData = fileData:toString()
-		projectData = json.decode(stringData)
+		local ok, decoded = pcall(json.decode, stringData)
+		if ok == false then decoded = nil end
+
+		projectData = decoded
 		if projectData == nil then
 			return nil, nil, Error("Failed to load project: Unable to deserialize file")
 		end
@@ -290,14 +340,14 @@ local function loadProject(data, config)
 
 	projectData, err = upgradeAndValidateProject(projectData, config)
 	if err ~= nil then
-		if zip then zip:close() end
-		return nil, nil, Error(err)
+		return fail(err)
 	end
 
-	local systems, err = createProjectSystems(projectData, zip)
-	if err ~= nil then
-		if zip then zip:close() end
-		return nil, nil, err
+	-- Resource loading touches ROM/SRAM payloads of attacker-controllable size
+	-- and shape; a throw here must not leak the reader either.
+	local ok, systems = pcall(createProjectSystems, projectData, zip)
+	if ok == false then
+		return fail("Failed to load project: Unable to create systems")
 	end
 
 	if zip then zip:close() end
@@ -316,25 +366,33 @@ local function saveProject(path, projectData, systems, systemStates, zipSettings
 		zip = ZipWriter.new(zipSettings)
 	end
 
+	-- Any bail-out below must still close and release the writer, otherwise a
+	-- file-backed save leaves a partially written project on disk.
+	local function fail(msg)
+		zip:close()
+		zip:free()
+		return Error(msg)
+	end
+
 	ok = zip:add(PROJECT_LUA_FILENAME, projectData)
-	if ok == false then return Error("Failed to add project config") end
+	if ok == false then return fail("Failed to add project config") end
 
 	for i, system in ipairs(systems) do
 		local idx = tostring(i)
 
 		if systemStates.srams[i] ~= nil then
 			ok = zip:add(idx .. ".sav", systemStates.srams[i])
-			if ok == false then return Error("Failed to add system SRAM") end
+			if ok == false then return fail("Failed to add system SRAM") end
 		end
 
 		if systemStates.states[i] ~= nil then
 			ok = zip:add(idx .. ".state", systemStates.states[i])
-			if ok == false then return Error("Failed to add system state") end
+			if ok == false then return fail("Failed to add system state") end
 		end
 
 		if includeRom == true and not isNullPtr(system.desc.romData) then
 			ok = zip:add(idx .. ".gb", system.desc.romData)
-			if ok == false then return Error("Failed to add system ROM") end
+			if ok == false then return fail("Failed to add system ROM") end
 		end
 	end
 

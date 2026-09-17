@@ -36,6 +36,11 @@ DerivedData
 # Local Codex conversation memory
 .Codex/
 
-# Local test ROM collections; never redistribute these with the plugin
-LSDj/
-mGB-master/
+# Local test ROM collections; never redistribute these with the plugin.
+# These must stay anchored to the repository root.  An unanchored "LSDj/"
+# matches a directory of that name at any depth, and because git is configured
+# with core.ignorecase=true on macOS it also matched the lowercase "lsdj"
+# source directories, silently excluding the LSDj scripts and the liblsdj
+# public headers from the repository.
+/LSDj/
+/mGB-master/
